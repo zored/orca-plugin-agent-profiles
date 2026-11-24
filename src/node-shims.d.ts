@@ -41,6 +41,7 @@ declare module 'node:sqlite' {
 declare module 'node:child_process' {
   export type ChildProcess = {
     stdout: { on(event: 'data', listener: (chunk: { toString(): string }) => void): void } | null
+    stderr: { on(event: 'data', listener: (chunk: { toString(): string }) => void): void } | null
     on(event: 'close', listener: (code: number | null) => void): void
     on(event: 'error', listener: (error: Error) => void): void
     kill(signal?: string): boolean

@@ -3,6 +3,7 @@
 // Orca transpile ce fichier au chargement.
 import type { OrcaWorkerApi } from 'orca/worker'
 import { agentById } from './agents'
+import { launchChat, opensAsChat, type ChatLauncher } from './chat'
 import { listAvatarFiles, pluginDirectory } from './avatars'
 import { LOCALES, localeOf, MESSAGES, type Locale, type Messages } from './copy'
 import { detectAgents, enabledAgents, REAL_INVENTORY_DEPS, type Inventory, type InventoryDeps } from './inventory'
@@ -45,10 +46,10 @@ const sameInventory = (a: Inventory, b: Inventory): boolean =>
   a.settingsReadable === b.settingsReadable && a.agents.length === b.agents.length && a.agents.every((id, i) => id === b.agents[i])
 
 export default function activate(orca: OrcaWorkerApi): Promise<void> {
-  return activateWith(orca, REAL_INVENTORY_DEPS)
+  return activateWith(orca, REAL_INVENTORY_DEPS, launchChat)
 }
 
-export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps): Promise<void> {
+export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps, chat: ChatLauncher | null = null): Promise<void> {
   let store: Store = EMPTY_STORE
   let pending: Pending | null = null
   let lastDenyReason: string | null = null
@@ -179,6 +180,17 @@ export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps): Pr
     if (!agentById(profile.agentId)) return { ok: false, reason: m().agentUnknown }
     const context = await orca.host.call('workspace.readContext', {})
     if (!context?.workspaceId) return { ok: false, reason: m().noWorkspace }
+
+    if (chat && opensAsChat(profile)) {
+      try {
+        await chat(profile, context.workspaceId)
+      } catch (error) {
+        orca.log(`chat launch failed profile=${profile.id}: ${messageOf(error)}`)
+        return { ok: false, reason: messageOf(error) }
+      }
+      await serialize(() => commit({ ...store, lastProfileId: profileId }))
+      return { ok: true }
+    }
 
     // agent.launch ne prend ni modèle ni env : le hook ci-dessous applique le profil en attente.
     pending = { profileId, agentId: profile.agentId, source, at: Date.now() }

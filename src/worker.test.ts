@@ -908,3 +908,27 @@ test('an unreadable stored language falls back to English and is replaced on the
   assert.equal(host.data().storage[LOCALE_KEY], 'en')
   await worker.deactivate()
 })
+
+test('a profile without provider and extra arguments opens as a chat', async () => {
+  const host = mockHost({ storage: { [STORE_KEY]: SAMPLE_STORE }, results: { 'workspace.readContext': CONTEXT } })
+  const chats: [string, string][] = []
+  const worker = await mountWorker(
+    { default: (orca) => activateWith(orca, fakeDeps().deps, async (profile, workspaceId) => void chats.push([profile.id, workspaceId])) },
+    { host }
+  )
+  await worker.request('locale.set', { locale: 'fr-FR' })
+  assert.deepEqual(await worker.request('profile.launch', { profileId: LUNA.id }), { ok: true })
+  assert.deepEqual(chats, [[LUNA.id, 'w1']])
+  assert.equal(host.callsOf('agent.launch').length, 0)
+  await worker.deactivate()
+})
+
+test('a failed chat launch returns its reason', async () => {
+  const host = mockHost({ storage: { [STORE_KEY]: SAMPLE_STORE }, results: { 'workspace.readContext': CONTEXT } })
+  const worker = await mountWorker(
+    { default: (orca) => activateWith(orca, fakeDeps().deps, async () => { throw new Error('selector_not_found') }) },
+    { host }
+  )
+  assert.deepEqual(await worker.request('profile.launch', { profileId: OPUS.id }), { ok: false, reason: 'selector_not_found' })
+  await worker.deactivate()
+})
