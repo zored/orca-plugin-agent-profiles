@@ -6,12 +6,13 @@ import {
   Box,
   Button,
   Callout,
-  Code,
   EmptyState,
   env,
   host,
   IconButton,
   Image,
+  List,
+  ListItem,
   on,
   plugin,
   read,
@@ -26,6 +27,7 @@ import {
 } from 'orca'
 import { agentById, type AgentSpec } from './agents'
 import { byName, copy } from './panel-copy'
+import { slotShortcut, slotsOf } from './slots'
 import { themedIcon } from './icons'
 import type { Inventory } from './inventory'
 import { openProfileForm, profileForm, renderProfileForm } from './profile-form'
@@ -174,56 +176,54 @@ function renderMonogram(name: string) {
   ) : null
 }
 
-/** « modèle · effort · fournisseur », les parties absentes omises ; seul le modèle est en police monospace. */
 function renderProfileSummary(current: Store, profile: Profile) {
-  const tail = [profile.effort, profile.providerId === null ? null : providerName(current, profile)].filter((part) => part !== null).join(' · ')
-  if (profile.model === null && tail === '') return null
-  return (
+  const summary = [profile.effort, profile.providerId === null ? null : providerName(current, profile)].filter((part) => part !== null).join(' · ')
+  return summary === '' ? null : (
     <Text muted size="xs" truncate>
-      {profile.model === null ? null : <Code>{profile.model}</Code>}
-      {profile.model !== null && tail !== '' ? ' · ' : ''}
-      {tail}
+      {summary}
     </Text>
   )
 }
 
-function renderProfileRow(current: Store, spec: AgentSpec, profile: Profile, canLaunch: boolean) {
+function renderProfileRow(current: Store, spec: AgentSpec, profile: Profile, canLaunch: boolean, slot: number | undefined) {
   const m = copy()
   return (
     <Row key={profile.id} justify="between" align="center" gap="sm">
-      {/* Le texte prend la place libre et se tronque (minWidth 0) ; les actions gardent leur taille,
-          donc ▷ et ✎ restent alignés en colonne quelle que soit la longueur du texte. */}
-      <Box key={`text-${profile.id}`} direction="row" align="center" gap="sm" grow minWidth={0}>
-        <Box key={`lead-${profile.id}`} width={LEAD_SLOT_WIDTH} shrink={false} align="center" justify="center">
-          {profile.avatar ? (
-            <Image src={themedIcon(profile.avatar, env.theme.colorScheme)} alt="" size="xs" rounded />
-          ) : (
-            renderMonogram(profile.name)
-          )}
-        </Box>
-        <Box key={`lines-${profile.id}`} grow minWidth={0}>
-          <Row align="center" gap="xs">
-            <Text weight="semibold" truncate>
-              {profile.name}
-            </Text>
-            {current.lastProfileId === profile.id ? <Badge tone="accent">{m.lastBadge}</Badge> : null}
-          </Row>
-          {renderProfileSummary(current, profile)}
-        </Box>
+      <Box key={`text-${profile.id}`} grow minWidth={0}>
+        <List key={`launch-list-${profile.id}`} label={m.launch(profile.name)}>
+          <ListItem key={`launch-${profile.id}`} disabled={!canLaunch} onPress={() => launch(profile)}>
+            <Box key={`press-${profile.id}`} direction="row" align="center" gap="sm" minWidth={0}>
+              <Box key={`lead-${profile.id}`} width={LEAD_SLOT_WIDTH} shrink={false} align="center" justify="center">
+                {profile.avatar ? (
+                  <Image src={themedIcon(profile.avatar, env.theme.colorScheme)} alt="" size="xs" rounded />
+                ) : (
+                  renderMonogram(profile.name)
+                )}
+              </Box>
+              <Box key={`lines-${profile.id}`} grow minWidth={0}>
+                <Row align="center" gap="xs">
+                  <Text weight="semibold" truncate>
+                    {profile.name}
+                  </Text>
+                  {current.lastProfileId === profile.id ? <Badge tone="accent">{m.lastBadge}</Badge> : null}
+                </Row>
+                {renderProfileSummary(current, profile)}
+              </Box>
+            </Box>
+          </ListItem>
+        </List>
       </Box>
-      <Box key={`actions-${profile.id}`} direction="row" gap="xs" shrink={false}>
-        <IconButton
-          icon="play"
-          label={m.launch(profile.name)}
-          variant="ghost"
-          size="sm"
-          disabled={!canLaunch}
-          onPress={() => launch(profile)}
-        />
+      <Box key={`actions-${profile.id}`} direction="row" align="center" gap="xs" shrink={false}>
+        {slot === undefined ? null : (
+          <Text muted size="xs">
+            {slotShortcut(slot)}
+          </Text>
+        )}
         <IconButton
           icon="edit"
           label={m.edit(profile.name)}
           variant="ghost"
+          tone="neutral"
           size="sm"
           onPress={() => openProfileForm(spec.id, profile)}
         />
@@ -238,7 +238,7 @@ function renderProfileRow(current: Store, spec: AgentSpec, profile: Profile, can
  * Le cadre prend la surface `muted` du thème d'Orca (thèmes personnalisés compris) pour se détacher du fond du volet ;
  * `card` s'y confond sur le thème sombre.
  */
-function renderAgentGroup(current: Store, spec: AgentSpec, canLaunch: boolean, collapsed: boolean) {
+function renderAgentGroup(current: Store, spec: AgentSpec, canLaunch: boolean, collapsed: boolean, slots: Map<string, number>) {
   const m = copy()
   const profiles = current.profiles.filter((profile) => profile.agentId === spec.id).sort((a, b) => byName(a.name, b.name))
   return (
@@ -283,7 +283,7 @@ function renderAgentGroup(current: Store, spec: AgentSpec, canLaunch: boolean, c
           {m.noProfileForAgent}
         </Text>
       ) : (
-        profiles.map((profile) => renderProfileRow(current, spec, profile, canLaunch))
+        profiles.map((profile) => renderProfileRow(current, spec, profile, canLaunch, slots.get(profile.id)))
       )}
     </Box>
   )
@@ -342,7 +342,8 @@ function renderGroups(current: Store, agents: Inventory | null, canLaunch: boole
   const specs = agents.agents.flatMap((id) => agentById(id) ?? []).sort((a, b) => byName(a.label, b.label))
   if (specs.length === 0) return <EmptyState icon="bot" title={m.noAgentTitle} description={m.noAgentHint} />
   const collapsed = read(collapsedAgents)
-  return <Stack gap="sm">{specs.map((spec) => renderAgentGroup(current, spec, canLaunch, collapsed.includes(spec.id)))}</Stack>
+  const slots = slotsOf(current, agents.agents, byName)
+  return <Stack gap="sm">{specs.map((spec) => renderAgentGroup(current, spec, canLaunch, collapsed.includes(spec.id), slots))}</Stack>
 }
 
 export default function Panel() {

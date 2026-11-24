@@ -136,19 +136,17 @@ test('sorts the profiles of a group by name, ignoring case and accents, numbers 
 
 test('lists each profile under its agent with model, effort and provider', async () => {
   const { view } = await open()
-  assert.notEqual(view.find({ text: /^opus · medium$/ }), null)
-  assert.notEqual(view.find({ text: /^deepseek-v4\.1-flash:cloud\[1m\] · Ollama$/ }), null)
-  assert.notEqual(view.find({ type: 'Code', text: 'gpt-6-luna' }), null)
-  // Seul l'identifiant du modèle passe en police monospace.
-  assert.equal(view.find({ type: 'Code', text: /Ollama|medium|high/ }), null)
+  assert.notEqual(view.find({ text: /^medium$/ }), null)
+  assert.notEqual(view.find({ text: /^Ollama$/ }), null)
+  assert.equal(view.find({ text: /gpt-6-luna|deepseek-v4/ }), null)
   await expectClean(view)
 })
 
 test('hides the profiles of an agent that is not enabled', async () => {
-  assert.notEqual((await open()).view.find({ label: 'Lancer Argon' }), null)
+  assert.notEqual((await open()).view.find({ testId: 'launch-argon' }), null)
   const { view } = await open({ inventory: { ...ENABLED, agents: ENABLED.agents.filter((id) => id !== 'antigravity') } })
-  assert.equal(view.find({ label: 'Lancer Argon' }), null)
-  assert.notEqual(view.find({ label: 'Lancer Luna' }), null)
+  assert.equal(view.find({ testId: 'launch-argon' }), null)
+  assert.notEqual(view.find({ testId: 'launch-luna' }), null)
   await expectClean(view)
 })
 
@@ -253,21 +251,21 @@ test('gives the avatar and the monogram the same fixed leading slot, and the gro
 
 test('folds and unfolds a group from its chevron, and remembers it', async () => {
   const { view } = await open()
-  assert.notEqual(view.find({ label: 'Lancer Opus' }), null)
+  assert.notEqual(view.find({ testId: 'launch-opus' }), null)
   // Chevron vers le bas quand le groupe est ouvert, vers la droite quand il est replié.
   assert.equal(view.find({ label: 'Replier Claude' })!.props.icon, 'expand')
   await view.press({ label: 'Replier Claude' })
   assert.equal(view.find({ label: 'Déplier Claude' })!.props.icon, 'next')
-  assert.equal(view.find({ label: 'Lancer Opus' }), null)
-  assert.equal(view.find({ label: 'Lancer DeepSeek 4.1 Flash' }), null)
+  assert.equal(view.find({ testId: 'launch-opus' }), null)
+  assert.equal(view.find({ testId: 'launch-deepseek-flash' }), null)
   // Le groupe replié dit ce qu'il cache ; les autres groupes restent ouverts.
   assert.notEqual(view.find({ text: '2 profils' }), null)
-  assert.notEqual(view.find({ label: 'Lancer Luna' }), null)
+  assert.notEqual(view.find({ testId: 'launch-luna' }), null)
   assert.notEqual(view.find({ label: 'Nouveau profil Claude' }), null)
   assert.deepEqual(view.persisted.plugin.collapsedAgents, ['claude'])
 
   await view.press({ label: 'Déplier Claude' })
-  assert.notEqual(view.find({ label: 'Lancer Opus' }), null)
+  assert.notEqual(view.find({ testId: 'launch-opus' }), null)
   assert.equal(view.find({ text: '2 profils' }), null)
   assert.deepEqual(view.persisted.plugin.collapsedAgents, [])
   await expectClean(view)
@@ -290,10 +288,10 @@ test('a folded group without profiles says so in its header', async () => {
 
 test('opens with the groups folded in an earlier session', async () => {
   const { view } = await open({ persisted: { plugin: { collapsedAgents: ['codex'] } } })
-  assert.equal(view.find({ label: 'Lancer Luna' }), null)
+  assert.equal(view.find({ testId: 'launch-luna' }), null)
   assert.notEqual(view.find({ text: '1 profil' }), null)
   assert.notEqual(view.find({ label: 'Déplier Codex' }), null)
-  assert.notEqual(view.find({ label: 'Lancer Opus' }), null)
+  assert.notEqual(view.find({ testId: 'launch-opus' }), null)
   await expectClean(view)
 })
 
@@ -418,25 +416,25 @@ test('switching the theme swaps the icons without remounting', async () => {
 test('shows a placeholder under an agent without profile', async () => {
   const { view } = await open({ store: { ...SAMPLE_STORE, profiles: [] } })
   assert.equal(view.findAll({ text: COPY.noProfileForAgent }).length, ENABLED.agents.length)
-  assert.equal(view.find({ label: 'Lancer Luna' }), null)
+  assert.equal(view.find({ testId: 'launch-luna' }), null)
   await expectClean(view)
 })
 
 test('launches a profile in the focused workspace', async () => {
   const { view, launches } = await open()
-  await view.press({ label: 'Lancer DeepSeek 4.1 Flash' })
+  await view.press({ testId: 'launch-deepseek-flash' })
   assert.deepEqual(launches, ['deepseek-flash'])
   await expectClean(view)
 })
 
 test('disables launch without a workspace and enables it when one is focused', async () => {
   const { view, state } = await open({ context: null })
-  assert.equal(view.find({ label: 'Lancer DeepSeek 4.1 Flash' })!.disabled, true)
+  assert.equal(view.find({ testId: 'launch-deepseek-flash' })!.disabled, true)
   assert.notEqual(view.find({ text: COPY.noWorkspace }), null)
 
   state.context = focused
   await view.emit('workspace.changed', { context: focused })
-  assert.equal(view.find({ label: 'Lancer DeepSeek 4.1 Flash' })!.disabled, false)
+  assert.equal(view.find({ testId: 'launch-deepseek-flash' })!.disabled, false)
   assert.equal(view.find({ text: COPY.noWorkspace }), null)
   await expectClean(view)
 })
@@ -445,14 +443,14 @@ test('shows why a launch failed', async () => {
   const { view } = await open({
     launch: () => ({ ok: false, reason: '« DeepSeek 4.1 Flash » : fournisseur introuvable.' })
   })
-  await view.press({ label: 'Lancer DeepSeek 4.1 Flash' })
+  await view.press({ testId: 'launch-deepseek-flash' })
   assert.notEqual(view.find({ text: /fournisseur introuvable/ }), null)
   await expectClean(view)
 })
 
 test('clears a launch failure when the store changes', async () => {
   const { view } = await open({ launch: () => ({ ok: false, reason: 'Le routage a échoué.' }) })
-  await view.press({ label: 'Lancer DeepSeek 4.1 Flash' })
+  await view.press({ testId: 'launch-deepseek-flash' })
   assert.notEqual(view.find({ text: /routage a échoué/ }), null)
   await view.post('store.changed', { ...SAMPLE_STORE, lastProfileId: 'deepseek-flash' })
   assert.equal(view.find({ text: /routage a échoué/ }), null)
@@ -652,7 +650,7 @@ test('closes the form without saving on cancel', async () => {
   await view.press({ label: 'Modifier DeepSeek 4.1 Flash' })
   await view.press({ text: 'Annuler' })
   assert.deepEqual(profileSaves, [])
-  assert.notEqual(view.find({ label: 'Lancer DeepSeek 4.1 Flash' }), null)
+  assert.notEqual(view.find({ testId: 'launch-deepseek-flash' }), null)
   await expectClean(view)
 })
 
@@ -724,8 +722,8 @@ test('follows store changes from the worker', async () => {
   const { view } = await open()
   const withoutDeepseek: Store = { ...SAMPLE_STORE, profiles: SAMPLE_STORE.profiles.filter((p) => p.id !== 'deepseek-flash') }
   await view.post('store.changed', withoutDeepseek)
-  assert.equal(view.find({ label: 'Lancer DeepSeek 4.1 Flash' }), null)
-  assert.notEqual(view.find({ label: 'Lancer Opus' }), null)
+  assert.equal(view.find({ testId: 'launch-deepseek-flash' }), null)
+  assert.notEqual(view.find({ testId: 'launch-opus' }), null)
   await expectClean(view)
 })
 
@@ -740,7 +738,7 @@ test('shows why the store could not be read and retries', async () => {
   })
   assert.notEqual(view.find({ text: /worker injoignable/ }), null)
   await view.press({ text: COPY.retry })
-  assert.notEqual(view.find({ label: 'Lancer DeepSeek 4.1 Flash' }), null)
+  assert.notEqual(view.find({ testId: 'launch-deepseek-flash' }), null)
   await expectClean(view)
 })
 
@@ -772,7 +770,7 @@ test('draws the list in English for en-US and any language Orca offers besides F
   for (const locale of ['en-US', 'de-DE']) {
     const { view } = await open({ locale, store: { ...SAMPLE_STORE, lastProfileId: 'luna' } })
     assert.notEqual(view.find({ label: 'New Claude profile' }), null, locale)
-    assert.notEqual(view.find({ label: 'Launch Luna' }), null, locale)
+    assert.notEqual(view.find({ testId: 'launch-luna' }), null, locale)
     assert.notEqual(view.find({ label: 'Edit Opus' }), null, locale)
     assert.notEqual(view.find({ label: 'Refresh agents' }), null, locale)
     assert.notEqual(view.find({ type: 'Badge', text: 'Last used' }), null, locale)
@@ -889,4 +887,15 @@ test('the alphabetical order follows the display language, not French', async ()
   assert.deepEqual(await order('sv-SE'), ['Edit Zed', 'Edit Äpple'])
   assert.deepEqual(await order('en-US'), ['Edit Äpple', 'Edit Zed'])
   assert.deepEqual(await order('fr-FR'), ['Modifier Äpple', 'Modifier Zed'])
+})
+
+test('numbers the profiles with their shortcut in panel order, without the model', async () => {
+  const { view } = await open()
+  assert.deepEqual(
+    view.findAll({ text: /^⌘⌥\d$/ }).map((t) => t.text),
+    ['⌘⌥1', '⌘⌥2', '⌘⌥3', '⌘⌥4', '⌘⌥5']
+  )
+  assert.equal(view.findAll({ type: 'IconButton', label: /^Lancer / }).length, 0)
+  await view.press({ testId: 'launch-opus' })
+  await expectClean(view)
 })
