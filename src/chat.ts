@@ -14,8 +14,14 @@ export function opensAsChat(profile: Profile): boolean {
   return profile.providerId === null && profile.extraArgs.length === 0
 }
 
+export function worktreeSelector(workspaceId: string): string {
+  if (/^(identity|folder|id):/.test(workspaceId)) return workspaceId
+  if (workspaceId.includes('::')) return `id:${workspaceId}`
+  throw new Error(`Unknown Orca workspace id format: ${workspaceId}`)
+}
+
 export function chatArgs(profile: Profile, workspaceId: string): string[] {
-  const args = ['agent', 'launch', '--agent', profile.agentId, '--surface', 'chat', '--focus', '--json', '--worktree', `id:${workspaceId}`]
+  const args = ['agent', 'launch', '--agent', profile.agentId, '--surface', 'chat', '--focus', '--json', '--worktree', worktreeSelector(workspaceId)]
   if (profile.model !== null) {
     args.push('--model', profile.model)
     if (profile.effort !== null) args.push('--effort', profile.effort)

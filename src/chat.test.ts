@@ -1,5 +1,5 @@
 import { assert, test } from 'orca/testing'
-import { chatArgs, launchChat, opensAsChat, type ChatRunner } from './chat'
+import { chatArgs, launchChat, opensAsChat, worktreeSelector, type ChatRunner } from './chat'
 import { DEEPSEEK, HARNESS, LUNA, OPUS } from './test-fixtures'
 
 const WS = 'repo::/abs/path'
@@ -37,4 +37,11 @@ test('launchChat refuses a terminal fallback', async () => {
 test('launchChat reports the CLI error', async () => {
   const { run } = runner(1, '', 'selector_not_found')
   await assert.rejects(launchChat(OPUS, WS, run), /selector_not_found/)
+})
+
+test('workspace ids map to worktree selectors', () => {
+  assert.equal(worktreeSelector('identity:wt2:local:abc'), 'identity:wt2:local:abc')
+  assert.equal(worktreeSelector('folder:f1'), 'folder:f1')
+  assert.equal(worktreeSelector('repo::/abs'), 'id:repo::/abs')
+  assert.throws(() => worktreeSelector('w1'), /Unknown Orca workspace id format/)
 })
