@@ -4,7 +4,7 @@
 import type { OrcaWorkerApi } from 'orca/worker'
 import { agentById } from './agents'
 import { launchChat, opensAsChat, type ChatLauncher } from './chat'
-import { profilesInPanelOrder, SLOT_COUNT, slotCommandId } from './slots'
+import { profilesInPanelOrder, SLOT_COUNT, slotCommandId, slotShortcut } from './slots'
 import { listAvatarFiles, pluginDirectory } from './avatars'
 import { LOCALES, localeOf, MESSAGES, type Locale, type Messages } from './copy'
 import { detectAgents, enabledAgents, REAL_INVENTORY_DEPS, type Inventory, type InventoryDeps } from './inventory'
@@ -31,6 +31,29 @@ import {
 const PENDING_TTL_MS = 15_000
 /** Âge maximal d'un inventaire servi par `agents.list` sans nouvelle sonde. */
 const INVENTORY_TTL_MS = 10_000
+
+/** Groupe des profils dans le menu « + » d'Orca (`agentPresets.set`, Orca avec host API 1.11). */
+export const PRESET_GROUP = 'profiles'
+const PRESET_GROUP_TITLE = 'Agent profiles'
+
+/** Profils du panneau en préréglages : seuls ceux qu'Orca sait lancer (ni fournisseur ni arguments), raccourci de leur slot. */
+export function presetItems(store: Store, enabled: readonly string[]) {
+  return profilesInPanelOrder(store, enabled).flatMap((profile, index) =>
+    opensAsChat(profile)
+      ? [
+          {
+            id: profile.id,
+            title: profile.name,
+            agent: profile.agentId,
+            ...(profile.model !== null ? { model: profile.model } : {}),
+            ...(profile.effort !== null ? { effort: profile.effort } : {}),
+            ...(profile.avatar !== null ? { icon: profile.avatar } : {}),
+            ...(index < SLOT_COUNT ? { keybinding: slotShortcut(index + 1) } : {})
+          }
+        ]
+      : []
+  )
+}
 
 /** Clé de stockage de la dernière langue annoncée par un panneau : distincte de celle du store, qui ne change pas de forme. */
 export const LOCALE_KEY = 'ui.locale'
@@ -68,6 +91,33 @@ export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps, cha
   /** Valeur présente dans le stockage, pour n'écrire que lorsqu'elle change. */
   let storedLocale: Locale | null = null
   const m = (): Messages => MESSAGES[locale]
+  let presetsAnnounced = false
+  let presetsUnavailableLogged = false
+  let publishing: Promise<unknown> = Promise.resolve()
+
+  /** Envoie les profils au menu « + » d'Orca ; un Orca sans `agentPresets.set` le dit une fois dans les logs. */
+  function publishPresets(): Promise<unknown> {
+    const run = publishing.then(async () => {
+      if (!orca.host.has('agentPresets.set')) {
+        if (!presetsUnavailableLogged) orca.log('agentPresets.set unavailable: profiles stay out of the new-tab menu')
+        presetsUnavailableLogged = true
+        return
+      }
+      const enabled = lastFound ? enabledAgents(lastFound, deps.readSettings()) : inventory?.agents
+      if (!enabled) return
+      const items = presetItems(store, enabled)
+      // Liste vide jamais envoyée avant la première non vide : rien à masquer.
+      if (items.length === 0 && !presetsAnnounced) return
+      try {
+        await orca.host.call('agentPresets.set', { group: PRESET_GROUP, title: PRESET_GROUP_TITLE, items })
+        presetsAnnounced = true
+      } catch (error) {
+        orca.log(`agentPresets.set failed code=${codeOf(error)}: ${messageOf(error)}`)
+      }
+    })
+    publishing = run.catch((error: unknown) => orca.log(`presets failed: ${messageOf(error)}`))
+    return publishing
+  }
 
   /** Lit le store ; absent, il est créé vide ; illisible, il est copié de côté avant d'être remplacé. */
   async function load(): Promise<void> {
@@ -115,7 +165,10 @@ export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps, cha
         lastFound = found
         if (!next.settingsReadable && settingsReadable !== false) orca.log('settings unreadable')
         settingsReadable = next.settingsReadable
-        if (changed) orca.panels.post('agents.changed', next)
+        if (changed) {
+          orca.panels.post('agents.changed', next)
+          void ready.then(publishPresets)
+        }
         return next
       })
       .finally(() => {
@@ -146,6 +199,7 @@ export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps, cha
     await orca.storage.set(STORE_KEY, next)
     store = next
     orca.panels.post('store.changed', next)
+    void publishPresets()
     return next
   }
 

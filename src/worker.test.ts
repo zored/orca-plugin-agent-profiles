@@ -6,7 +6,7 @@ import type { InventoryDeps } from './inventory'
 import { splitWords } from './launch'
 import { EMPTY_STORE, STORE_KEY, type Profile, type Store } from './store'
 import { AGY_CMD, ARGON, CLAUDE_CMD, CODEX_CMD, DEEPSEEK, fakeDeps, HARNESS, LUNA, OLLAMA, OPUS, SAMPLE_STORE } from './test-fixtures'
-import { activateWith, LOCALE_KEY } from './worker'
+import { activateWith, LOCALE_KEY, PRESET_GROUP } from './worker'
 
 const COPY = MESSAGES.fr
 
@@ -944,5 +944,24 @@ test('Mod+Alt+N launches the Nth profile of the panel', async () => {
   await worker.command('agentProfiles.launchSlot3')
   assert.deepEqual(chats, [LUNA.id])
   assert.equal(await worker.command('agentProfiles.launchSlot9'), 'No profile #9 in the Agents panel')
+  await worker.deactivate()
+})
+
+test('publishes chat-ready profiles as new-tab presets in panel order with their slot shortcut', async () => {
+  const host = mockHost({ storage: { [STORE_KEY]: SAMPLE_STORE }, results: { 'agentPresets.set': { ok: true } } })
+  const worker = await mountV2(host)
+  await worker.request('agents.list')
+  await pause()
+  const calls = host.callsOf('agentPresets.set')
+  assert.deepEqual(calls[calls.length - 1], {
+    group: PRESET_GROUP,
+    title: 'Agent profiles',
+    items: [
+      { id: 'argon', title: 'Argon', agent: 'antigravity', model: 'gemini-4-argon', effort: 'medium', keybinding: '⌘⌥1' },
+      { id: 'opus', title: 'Opus', agent: 'claude', model: 'opus', effort: 'medium', keybinding: '⌘⌥3' },
+      { id: 'luna', title: 'Luna', agent: 'codex', model: 'gpt-6-luna', effort: 'high', keybinding: '⌘⌥4' },
+      { id: 'harness', title: 'Harness', agent: 'dsh', keybinding: '⌘⌥5' }
+    ]
+  })
   await worker.deactivate()
 })
