@@ -2,7 +2,7 @@
   "manifestVersion": 2,
   "id": "agent-profiles",
   "name": "Agent Profiles",
-  "version": "2.0.8",
+  "version": "2.1.0",
   "description": "Launch Orca's agents with saved profiles: model, effort, extra arguments and, for Claude, a provider such as Ollama or OpenRouter.",
   "author": {
     "name": "Romain Ecarnot",
