@@ -4,6 +4,7 @@
 import type { OrcaWorkerApi } from 'orca/worker'
 import { agentById } from './agents'
 import { launchChat, opensAsChat, type ChatLauncher } from './chat'
+import { profilesInPanelOrder, SLOT_COUNT, slotCommandId } from './slots'
 import { listAvatarFiles, pluginDirectory } from './avatars'
 import { LOCALES, localeOf, MESSAGES, type Locale, type Messages } from './copy'
 import { detectAgents, enabledAgents, REAL_INVENTORY_DEPS, type Inventory, type InventoryDeps } from './inventory'
@@ -300,6 +301,17 @@ export async function activateWith(orca: OrcaWorkerApi, deps: InventoryDeps, cha
     const result = await launchProfile(profile.id, 'relaunch')
     return result.ok ? m().launched(profile.name) : result.reason
   })
+
+  for (let slot = 1; slot <= SLOT_COUNT; slot++) {
+    orca.commands.register(slotCommandId(slot), async () => {
+      await ready
+      const enabled = lastFound ? enabledAgents(lastFound, deps.readSettings()) : (await listInventory()).agents
+      const profile = profilesInPanelOrder(store, enabled)[slot - 1]
+      if (!profile) return `No profile #${slot} in the Agents panel`
+      const result = await launchProfile(profile.id, 'relaunch')
+      return result.ok ? m().launched(profile.name) : result.reason
+    })
+  }
 
   orca.hooks.on('agent.launch.before', async (event, next) => {
     await ready

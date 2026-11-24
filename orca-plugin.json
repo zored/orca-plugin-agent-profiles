@@ -4,7 +4,10 @@
   "name": "Agent Profiles",
   "version": "2.0.8",
   "description": "Launch Orca's agents with saved profiles: model, effort, extra arguments and, for Claude, a provider such as Ollama or OpenRouter.",
-  "author": { "name": "Romain Ecarnot", "url": "https://github.com/eRom" },
+  "author": {
+    "name": "Romain Ecarnot",
+    "url": "https://github.com/eRom"
+  },
   "repository": "https://github.com/eRom/orca-plugin-agent-profiles",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -38,23 +41,137 @@
   "pluginApi": 1,
   "main": "src/worker.ts",
   "capabilities": [
-    { "kind": "workspace:read" },
-    { "kind": "workspace:write" },
-    { "kind": "agent:launch" },
-    { "kind": "storage:own" }
+    {
+      "kind": "workspace:read"
+    },
+    {
+      "kind": "workspace:write"
+    },
+    {
+      "kind": "agent:launch"
+    },
+    {
+      "kind": "storage:own"
+    }
   ],
   "contributes": {
     "panels": [
-      { "id": "agents", "title": "Agents", "icon": "bot", "entry": "src/panel.tsx", "ui": "components" }
+      {
+        "id": "agents",
+        "title": "Agents",
+        "icon": "bot",
+        "entry": "src/panel.tsx",
+        "ui": "components"
+      }
     ],
     "commands": [
-      { "id": "agentProfiles.relaunchLast", "title": "Agents: relaunch last profile", "when": "workspace" }
+      {
+        "id": "agentProfiles.relaunchLast",
+        "title": "Agents: relaunch last profile",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot1",
+        "title": "Agents: launch profile 1",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot2",
+        "title": "Agents: launch profile 2",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot3",
+        "title": "Agents: launch profile 3",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot4",
+        "title": "Agents: launch profile 4",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot5",
+        "title": "Agents: launch profile 5",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot6",
+        "title": "Agents: launch profile 6",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot7",
+        "title": "Agents: launch profile 7",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot8",
+        "title": "Agents: launch profile 8",
+        "when": "workspace"
+      },
+      {
+        "id": "agentProfiles.launchSlot9",
+        "title": "Agents: launch profile 9",
+        "when": "workspace"
+      }
     ],
     "keybindings": [
-      { "command": "agentProfiles.relaunchLast", "key": "Mod+Alt+L", "when": "workspace" }
+      {
+        "command": "agentProfiles.relaunchLast",
+        "key": "Mod+Alt+L",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot1",
+        "key": "Mod+Alt+1",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot2",
+        "key": "Mod+Alt+2",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot3",
+        "key": "Mod+Alt+3",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot4",
+        "key": "Mod+Alt+4",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot5",
+        "key": "Mod+Alt+5",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot6",
+        "key": "Mod+Alt+6",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot7",
+        "key": "Mod+Alt+7",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot8",
+        "key": "Mod+Alt+8",
+        "when": "workspace"
+      },
+      {
+        "command": "agentProfiles.launchSlot9",
+        "key": "Mod+Alt+9",
+        "when": "workspace"
+      }
     ],
     "hooks": [
-      { "event": "agent.launch.before" }
+      {
+        "event": "agent.launch.before"
+      }
     ]
   }
 }

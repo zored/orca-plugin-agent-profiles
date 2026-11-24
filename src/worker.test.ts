@@ -932,3 +932,17 @@ test('a failed chat launch returns its reason', async () => {
   assert.deepEqual(await worker.request('profile.launch', { profileId: OPUS.id }), { ok: false, reason: 'selector_not_found' })
   await worker.deactivate()
 })
+
+test('Mod+Alt+N launches the Nth profile of the panel', async () => {
+  const host = mockHost({ storage: { [STORE_KEY]: SAMPLE_STORE }, results: { 'workspace.readContext': CONTEXT } })
+  const chats: string[] = []
+  const worker = await mountWorker(
+    { default: (orca) => activateWith(orca, fakeDeps(['claude', 'codex']).deps, async (profile) => void chats.push(profile.id)) },
+    { host }
+  )
+  await worker.request('locale.set', { locale: 'en-US' })
+  await worker.command('agentProfiles.launchSlot3')
+  assert.deepEqual(chats, [LUNA.id])
+  assert.equal(await worker.command('agentProfiles.launchSlot9'), 'No profile #9 in the Agents panel')
+  await worker.deactivate()
+})
